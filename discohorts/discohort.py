@@ -16,6 +16,7 @@ from __future__ import print_function
 
 from types import FunctionType
 from subprocess import check_call
+from copy import deepcopy
 from cohorts import Cohort
 
 class Discohort(Cohort):
@@ -23,7 +24,7 @@ class Discohort(Cohort):
         self.__class__ = type(baseObject.__class__.__name__,
                               (self.__class__, baseObject.__class__),
                               {})
-        self.__dict__ = baseObject.__dict__
+        self.__dict__ = deepcopy(baseObject.__dict__)
         self.is_processed = False
 
     def run(self, pipeline_name, ocaml_pipeline_path, name_cli_arg="name", other_cli_args={}):
@@ -36,4 +37,3 @@ class Discohort(Cohort):
                 command.append("--{}={}".format(cli_arg, cli_arg_value))
             print("Running {}".format(" ".join(command)))
             check_call(command)
-            break
