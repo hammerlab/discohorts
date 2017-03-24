@@ -20,13 +20,15 @@ from cohorts import Cohort
 from .pipeline import Pipeline
 
 class Discohort(Cohort):
-    def __init__(self, baseObject):
-        self.__class__ = type(baseObject.__class__.__name__,
-                              (self.__class__, baseObject.__class__),
+    def __init__(self, base_object, results_path=None, work_dirs=[]):
+        self.__class__ = type(base_object.__class__.__name__,
+                              (self.__class__, base_object.__class__),
                               {})
-        self.__dict__ = deepcopy(baseObject.__dict__)
+        self.__dict__ = deepcopy(base_object.__dict__)
         self.pipelines = {}
         self.is_processed = False
+        self.results_path = results_path
+        self.work_dirs = work_dirs
 
     def add_pipeline(self, name, ocaml_path, name_cli_arg="name", other_cli_args={}):
         if name in self.pipelines:
@@ -44,3 +46,6 @@ class Discohort(Cohort):
 
         pipeline = self.pipelines[name]
         pipeline.run(self)
+
+    def populate(self):
+        pass
