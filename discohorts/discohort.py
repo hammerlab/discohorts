@@ -14,10 +14,10 @@
 
 from __future__ import print_function
 
-from types import FunctionType
-from subprocess import check_call
 from copy import deepcopy
 from cohorts import Cohort
+
+from .pipeline import Pipeline
 
 class Discohort(Cohort):
     def __init__(self, baseObject):
@@ -25,15 +25,22 @@ class Discohort(Cohort):
                               (self.__class__, baseObject.__class__),
                               {})
         self.__dict__ = deepcopy(baseObject.__dict__)
+        self.pipelines = {}
         self.is_processed = False
 
-    def run(self, pipeline_name, ocaml_pipeline_path, name_cli_arg="name", other_cli_args={}):
-        for patient in self:
-            command = ["ocaml", ocaml_pipeline_path]
-            command.append("--{}={}".format(name_cli_arg, "{}_{}".format(pipeline_name, patient.id)))
-            for cli_arg, cli_arg_value in other_cli_args.items():
-                if type(cli_arg_value) == FunctionType:
-                    cli_arg_value = cli_arg_value(patient)
-                command.append("--{}={}".format(cli_arg, cli_arg_value))
-            print("Running {}".format(" ".join(command)))
-            check_call(command)
+    def add_pipeline(self, name, ocaml_path, name_cli_arg="name", other_cli_args={}):
+        if name in self.pipelines:
+            raise ValueError("Pipeline already exists: {}".format(name))
+
+        pipeline = Pipeline(name=name,
+                            ocaml_path=ocaml_path,
+                            name_cli_arg=name_cli_arg,
+                            other_cli_args=other_cli_args)
+        self.pipelines[name] = pipeline
+
+    def run_pipeline(self, name):
+        if name not in self.pipelines:
+            raise ValueError("Trying to run a pipeline that does not exist: {}".format(name))
+
+        pipeline = self.pipelines[name]
+        pipeline.run(self)
