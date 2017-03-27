@@ -39,14 +39,16 @@ class Discohort(Cohort):
         self.biokepi_results_dirs = biokepi_results_dirs
         self.id_delims = id_delims
 
-    def add_pipeline(self, name, ocaml_path, name_cli_arg="name", other_cli_args={}):
+    def add_pipeline(self, name, ocaml_path, name_cli_arg="name", other_cli_args={},
+                     patient_subset_function=None):
         if name in self.pipelines:
             raise ValueError("Pipeline already exists: {}".format(name))
 
         pipeline = Pipeline(name=name,
                             ocaml_path=ocaml_path,
                             name_cli_arg=name_cli_arg,
-                            other_cli_args=other_cli_args)
+                            other_cli_args=other_cli_args,
+                            patient_subset_function=patient_subset_function)
         self.pipelines[name] = pipeline
 
     def run_pipeline(self, name):
@@ -87,16 +89,18 @@ class Discohort(Cohort):
         if len(found_ids) == 1:
             return found_ids[0]
         elif len(found_ids) > 1:
-            raise ValueError("Found multiple candidate patients for name {}: {}".format(
+            raise ValueError("Found multiple candidate patients for file/folder name {}: {}".format(
                 name, found_ids))
         return None
 
-    def populate(self):
-        patient_id_to_patient_results = {}
+    def populate(self, require_all_patients=True):
+        patient_id_to_patient_results = defaultdict(list)
         for results_dir in self.biokepi_results_dirs:
             patient_results_dirs = listdir(results_dir)
             for patient_results_dir in patient_results_dirs:
                 found_patient_id = self.find_patient_id(patient_results_dir)
                 if found_patient_id is not None:
-                    patient_id_to_patient_results[found_patient_id] = path.join(results_dir, patient_results_dir)
+                    patient_id_to_patient_results[found_patient_id].append(path.join(results_dir, patient_results_dir))
+        if require_all_patients and (len(patient_id_to_patient_results) != len(self)):
+            raise ValueError("Only found {} patients to populate the Cohort with, but expected {}".format(len(patient_id_to_patient_results), len(self)))
         print(patient_id_to_patient_results)
