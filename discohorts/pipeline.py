@@ -34,7 +34,8 @@ class Pipeline(object):
             environ["PYENSEMBL_CACHE_DIR"] = path.join(original_work_dir, "pyensembl-cache")
             work_dir_index = 0
             for i, patient in enumerate(discohort):
-                environ["BIOKEPI_WORK_DIR"] = discohort.work_dirs[work_dir_index]
+                environ["BIOKEPI_WORK_DIR"] = discohort.biokepi_work_dirs[work_dir_index]
+                print("Setting BIOKEPI_WORK_DIR={}".format(environ["BIOKEPI_WORK_DIR"]))
                 command = ["ocaml", self.ocaml_path]
                 command.append("--{}={}".format(self.name_cli_arg, "{}_{}".format(self.name, patient.id)))
                 for cli_arg, cli_arg_value in self.other_cli_args.items():
@@ -45,7 +46,7 @@ class Pipeline(object):
                 check_call(command)
 
                 # TODO: Divide the number of patients by the number of work dirs. Test this logic.
-                if (i + 1) % (len(discohort) / len(discohort.work_dirs)) == 0:
+                if (i + 1) % (len(discohort) / len(discohort.biokepi_work_dirs)) == 0:
                     work_dir_index += 1
         finally:
             environ["BIOKEPI_WORK_DIR"] = original_work_dir
