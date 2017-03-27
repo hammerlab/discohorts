@@ -15,29 +15,42 @@
 from __future__ import print_function
 
 from copy import deepcopy
+from os import path, listdir, walk
+import re
+from glob import glob
+import subprocess
+from collections import defaultdict
 from cohorts import Cohort
 
 from .pipeline import Pipeline
 
+DEFAULT_ID_DELIMS = ["_", "-"]
+
 class Discohort(Cohort):
-    def __init__(self, base_object, results_path=None, work_dirs=[]):
+    def __init__(self, base_object, biokepi_work_dirs, biokepi_results_dirs, id_delims=DEFAULT_ID_DELIMS):
+        if len(biokepi_work_dirs) < 1:
+            raise ValueError("Need at least one work dir, but work_dirs = {}".format(biokepi_work_dirs))
+
         self.__class__ = type(base_object.__class__.__name__,
                               (self.__class__, base_object.__class__),
                               {})
         self.__dict__ = deepcopy(base_object.__dict__)
         self.pipelines = {}
         self.is_processed = False
-        self.results_path = results_path
-        self.work_dirs = work_dirs
+        self.biokepi_work_dirs = biokepi_work_dirs
+        self.biokepi_results_dirs = biokepi_results_dirs
+        self.id_delims = id_delims
 
-    def add_pipeline(self, name, ocaml_path, name_cli_arg="name", other_cli_args={}):
+    def add_pipeline(self, name, ocaml_path, name_cli_arg="name", other_cli_args={},
+                     patient_subset_function=None):
         if name in self.pipelines:
             raise ValueError("Pipeline already exists: {}".format(name))
 
         pipeline = Pipeline(name=name,
                             ocaml_path=ocaml_path,
                             name_cli_arg=name_cli_arg,
-                            other_cli_args=other_cli_args)
+                            other_cli_args=other_cli_args,
+                            patient_subset_function=patient_subset_function)
         self.pipelines[name] = pipeline
 
     def run_pipeline(self, name):
@@ -47,5 +60,74 @@ class Discohort(Cohort):
         pipeline = self.pipelines[name]
         pipeline.run(self)
 
-    def populate(self):
+    def find_patient_id(self, name):
+        """
+        Given a file or folder name, determine whether any patient IDs are present
+        inside it using the appropriate delimiters.
+
+        Returns the corresponding patient ID or None.
+        """
+        def with_delims(patient_id):
+            with_delims_list = []
+            # ^<id>$, ^<id>_, _<id>$, _<id>_
+            for delim in self.id_delims:
+                for beginning in [delim, "^"]:
+                    for end in [delim, "$"]:
+                        with_delims_list.append("{}{}{}".format(
+                            beginning, patient_id, end))
+            return with_delims_list
+
+        found_ids = []
+        for patient in self:
+            for with_delim in with_delims(patient.id):
+                if re.search(with_delim, name):
+                    found_ids.append(patient.id)
+
+        if len(found_ids) == 1:
+            return found_ids[0]
+        elif len(found_ids) > 1:
+            raise ValueError("Found multiple candidate patients for file/folder name {}: {}".format(
+                name, found_ids))
+        return None
+
+    def find_files_recursive(self, search_path, pattern):
+        """
+        Utility helper to traverse a path
+        Returns list of full path to all files matching pattern
+        """
+        return [y for x in walk(search_path)
+                for y in glob(path.join(x[0], pattern))]
+
+    # TODO: Incomplete method.
+    def populate(self, require_all_patients=True):
+        patient_id_to_patient_results = defaultdict(list)
+        for results_dir in self.biokepi_results_dirs:
+            patient_results_dirs = listdir(results_dir)
+            for patient_results_dir in patient_results_dirs:
+                found_patient_id = self.find_patient_id(patient_results_dir)
+                if found_patient_id is not None:
+                    patient_id_to_patient_results[found_patient_id].append(path.join(results_dir, patient_results_dir))
+        if require_all_patients and (len(patient_id_to_patient_results) != len(self)):
+            raise ValueError("Only found {} patients to populate the Cohort with, but expected {}".format(len(patient_id_to_patient_results), len(self)))
+
+        # TODO: Actually populate the cohort with more data.
+        for patient in self:
+            results_paths = patient_id_to_patient_results[patient.id]
+            # TODO: Don't populate for multiple paths.
+            for results_path in results_paths:
+                self.populate_hla(patient, results_path)
+
+    # TODO: Incomplete method.
+    def populate_hla(self, patient, patient_results):
+        tsv_files = self.find_files_recursive(search_path=patient_results, pattern="*.tsv")
+        if len(tsv_files) > 1:
+            raise ValueError((
+                "More than one TSV found for OptiType results in {}, "
+                "but only one expected").format(patient_results))
+        if len(tsv_files) == 0:
+            raise ValueError("No OptiType TSV found in {}".format(patient_results))
+
+        optitype_results_dir = path.dirname(tsv_files[0])
+        optitype_hlarp = subprocess.check_output(["hlarp", "optitype", optitype_results_dir])
+        print(optitype_hlarp)
         pass

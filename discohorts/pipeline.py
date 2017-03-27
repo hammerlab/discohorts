@@ -19,11 +19,12 @@ from subprocess import check_call
 from os import environ, path
 
 class Pipeline(object):
-    def __init__(self, name, ocaml_path, name_cli_arg, other_cli_args):
+    def __init__(self, name, ocaml_path, name_cli_arg, other_cli_args, patient_subset_function):
         self.name = name
         self.ocaml_path = ocaml_path
         self.name_cli_arg = name_cli_arg
         self.other_cli_args = other_cli_args
+        self.patient_subset_function = patient_subset_function
 
     def run(self, discohort):
         original_work_dir = environ["BIOKEPI_WORK_DIR"]
@@ -33,8 +34,20 @@ class Pipeline(object):
             environ["INSTALL_TOOLS_PATH"] = path.join(original_work_dir, "toolkit")
             environ["PYENSEMBL_CACHE_DIR"] = path.join(original_work_dir, "pyensembl-cache")
             work_dir_index = 0
-            for i, patient in enumerate(discohort):
-                environ["BIOKEPI_WORK_DIR"] = discohort.work_dirs[work_dir_index]
+
+            patient_subset = [patient for patient in discohort if self.patient_subset_function(patient)]
+            def get_patient_to_work_dir(patients, work_dirs):
+                num_chunks = len(work_dirs)
+                return_dict = {}
+                for i, work_dir in enumerate(work_dirs):
+                    for item in patients[i::num_chunks]:
+                        return_dict[item] = work_dir
+                return return_dict
+            patient_to_work_dir = get_patient_to_work_dir(patient_subset, discohort.biokepi_work_dirs)
+            print("Running on a patient subset of {} patients".format(len(patient_subset)))
+            for patient in patient_subset:
+                environ["BIOKEPI_WORK_DIR"] = patient_to_work_dir[patient]
+                print("Setting BIOKEPI_WORK_DIR={}".format(environ["BIOKEPI_WORK_DIR"]))
                 command = ["ocaml", self.ocaml_path]
                 command.append("--{}={}".format(self.name_cli_arg, "{}_{}".format(self.name, patient.id)))
                 for cli_arg, cli_arg_value in self.other_cli_args.items():
@@ -43,10 +56,6 @@ class Pipeline(object):
                     command.append("--{}={}".format(cli_arg, cli_arg_value))
                 print("Running {}".format(" ".join(command)))
                 check_call(command)
-
-                # TODO: Divide the number of patients by the number of work dirs. Test this logic.
-                if (i + 1) % (len(discohort) / len(discohort.work_dirs)) == 0:
-                    work_dir_index += 1
         finally:
             environ["BIOKEPI_WORK_DIR"] = original_work_dir
             if original_install_tools_path:
