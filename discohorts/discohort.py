@@ -15,8 +15,10 @@
 from __future__ import print_function
 
 from copy import deepcopy
-from os import path, listdir
+from os import path, listdir, walk
 import re
+from glob import glob
+import subprocess
 from collections import defaultdict
 from cohorts import Cohort
 
@@ -58,11 +60,6 @@ class Discohort(Cohort):
         pipeline = self.pipelines[name]
         pipeline.run(self)
 
-    def patient_id_(self, patient):
-
-
-        return patient_ids_with_delims
-
     def find_patient_id(self, name):
         """
         Given a file or folder name, determine whether any patient IDs are present
@@ -93,6 +90,15 @@ class Discohort(Cohort):
                 name, found_ids))
         return None
 
+    def find_files_recursive(self, search_path, pattern):
+        """
+        Utility helper to traverse a path
+        Returns list of full path to all files matching pattern
+        """
+        return [y for x in walk(search_path)
+                for y in glob(path.join(x[0], pattern))]
+
+    # TODO: Incomplete method.
     def populate(self, require_all_patients=True):
         patient_id_to_patient_results = defaultdict(list)
         for results_dir in self.biokepi_results_dirs:
@@ -103,4 +109,25 @@ class Discohort(Cohort):
                     patient_id_to_patient_results[found_patient_id].append(path.join(results_dir, patient_results_dir))
         if require_all_patients and (len(patient_id_to_patient_results) != len(self)):
             raise ValueError("Only found {} patients to populate the Cohort with, but expected {}".format(len(patient_id_to_patient_results), len(self)))
-        print(patient_id_to_patient_results)
+
+        # TODO: Actually populate the cohort with more data.
+        for patient in self:
+            results_paths = patient_id_to_patient_results[patient.id]
+            # TODO: Don't populate for multiple paths.
+            for results_path in results_paths:
+                self.populate_hla(patient, results_path)
+
+    # TODO: Incomplete method.
+    def populate_hla(self, patient, patient_results):
+        tsv_files = self.find_files_recursive(search_path=patient_results, pattern="*.tsv")
+        if len(tsv_files) > 1:
+            raise ValueError((
+                "More than one TSV found for OptiType results in {}, "
+                "but only one expected").format(patient_results))
+        if len(tsv_files) == 0:
+            raise ValueError("No OptiType TSV found in {}".format(patient_results))
+
+        optitype_results_dir = path.dirname(tsv_files[0])
+        optitype_hlarp = subprocess.check_output(["hlarp", "optitype", optitype_results_dir])
+        print(optitype_hlarp)
+        pass
