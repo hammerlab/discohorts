@@ -35,7 +35,10 @@ class Pipeline(object):
             environ["PYENSEMBL_CACHE_DIR"] = path.join(original_work_dir, "pyensembl-cache")
             work_dir_index = 0
 
-            patient_subset = [patient for patient in discohort if self.patient_subset_function(patient)]
+            if self.patient_subset_function is None:
+                patient_subset = discohort
+            else:
+                patient_subset = [patient for patient in discohort if self.patient_subset_function(patient)]
             def get_patient_to_work_dir(patients, work_dirs):
                 num_chunks = len(work_dirs)
                 return_dict = {}
