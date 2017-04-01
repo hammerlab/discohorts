@@ -19,7 +19,8 @@ from subprocess import check_call
 from os import environ, path
 
 class Pipeline(object):
-    def __init__(self, name, ocaml_path, name_cli_arg, other_cli_args, patient_subset_function):
+    def __init__(self, name, ocaml_path, name_cli_arg, other_cli_args,
+                 patient_subset_function):
         self.name = name
         self.ocaml_path = ocaml_path
         self.name_cli_arg = name_cli_arg
@@ -31,14 +32,20 @@ class Pipeline(object):
         original_install_tools_path = environ.get("INSTALL_TOOLS_PATH", None)
         original_pyensembl_cache_dir = environ.get("PYENSEMBL_CACHE_DIR", None)
         try:
-            environ["INSTALL_TOOLS_PATH"] = path.join(original_work_dir, "toolkit")
-            environ["PYENSEMBL_CACHE_DIR"] = path.join(original_work_dir, "pyensembl-cache")
+            environ["INSTALL_TOOLS_PATH"] = path.join(original_work_dir,
+                                                      "toolkit")
+            environ["PYENSEMBL_CACHE_DIR"] = path.join(original_work_dir,
+                                                       "pyensembl-cache")
             work_dir_index = 0
 
             if self.patient_subset_function is None:
                 patient_subset = discohort
             else:
-                patient_subset = [patient for patient in discohort if self.patient_subset_function(patient)]
+                patient_subset = [
+                    patient for patient in discohort
+                    if self.patient_subset_function(patient)
+                ]
+
             def get_patient_to_work_dir(patients, work_dirs):
                 num_chunks = len(work_dirs)
                 return_dict = {}
@@ -46,13 +53,18 @@ class Pipeline(object):
                     for item in patients[i::num_chunks]:
                         return_dict[item] = work_dir
                 return return_dict
-            patient_to_work_dir = get_patient_to_work_dir(patient_subset, discohort.biokepi_work_dirs)
-            print("Running on a patient subset of {} patients".format(len(patient_subset)))
+
+            patient_to_work_dir = get_patient_to_work_dir(
+                patient_subset, discohort.biokepi_work_dirs)
+            print("Running on a patient subset of {} patients".format(
+                len(patient_subset)))
             for patient in patient_subset:
                 environ["BIOKEPI_WORK_DIR"] = patient_to_work_dir[patient]
-                print("Setting BIOKEPI_WORK_DIR={}".format(environ["BIOKEPI_WORK_DIR"]))
+                print("Setting BIOKEPI_WORK_DIR={}".format(
+                    environ["BIOKEPI_WORK_DIR"]))
                 command = ["ocaml", self.ocaml_path]
-                command.append("--{}={}".format(self.name_cli_arg, "{}_{}".format(self.name, patient.id)))
+                command.append("--{}={}".format(
+                    self.name_cli_arg, "{}_{}".format(self.name, patient.id)))
                 for cli_arg, cli_arg_value in self.other_cli_args.items():
                     if type(cli_arg_value) == FunctionType:
                         cli_arg_value = cli_arg_value(patient)
