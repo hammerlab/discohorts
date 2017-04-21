@@ -77,15 +77,23 @@ class Discohort(Cohort):
         pipeline.run(self)
 
     def move_results_dirs(self, updated_name):
+        """
+        Rename existing work directories to prevent collisions with future runs.
+        """
         move_tuples = []
         for results_dir in self.biokepi_results_dirs:
+            if not path.exists(results_dir):
+                print("{} does not exist, so there is nothing to move".format(
+                    results_dir))
+                continue
+
             new_dir = path.join(path.dirname(results_dir), updated_name)
             if path.exists(new_dir):
                 raise ValueError("{} already exists".format(new_dir))
             move_tuples.append((results_dir, new_dir))
 
         for old_dir, new_dir in move_tuples:
-            print("Move {} to {}".format(old_dir, new_dir))
+            print("Moving {} to {}".format(old_dir, new_dir))
             move(old_dir, new_dir)
 
     def copy_data(self, only_cohort=True):
