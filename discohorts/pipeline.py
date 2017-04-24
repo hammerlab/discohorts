@@ -34,8 +34,16 @@ class Pipeline(object):
         try:
             environ["INSTALL_TOOLS_PATH"] = path.join(original_work_dir,
                                                       "toolkit")
+            print("Setting INSTALL_TOOLS_PATH={}".format(
+                environ["INSTALL_TOOLS_PATH"]))
             environ["PYENSEMBL_CACHE_DIR"] = path.join(original_work_dir,
                                                        "pyensembl-cache")
+            print("Setting PYENSEMBL_CACHE_DIR={}".format(
+                environ["PYENSEMBL_CACHE_DIR"]))
+            environ["REFERENCE_GENOME_PATH"] = path.join(original_work_dir,
+                                                         "reference-genome")
+            print("Setting REFERENCE_GENOME_PATH={}".format(
+                environ["REFERENCE_GENOME_PATH"]))
             work_dir_index = 0
 
             if self.patient_subset_function is None:
