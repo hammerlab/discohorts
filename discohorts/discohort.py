@@ -34,7 +34,9 @@ class Discohort(Cohort):
                  biokepi_results_dirs,
                  dest_results_dir=None,
                  id_delims=DEFAULT_ID_DELIMS,
-                 copy_only_patterns=["*.tsv"]):
+                 copy_only_patterns=["*.tsv"],
+                 batch_size=50,
+                 batch_wait_secs=0):
         if len(biokepi_work_dirs) < 1:
             raise ValueError("Need at least one work dir, but work_dirs = {}".
                              format(biokepi_work_dirs))
@@ -49,6 +51,8 @@ class Discohort(Cohort):
         self.dest_results_dir = dest_results_dir
         self.id_delims = id_delims
         self.copy_only_patterns = copy_only_patterns
+        self.batch_size = batch_size
+        self.batch_wait_secs = batch_wait_secs
 
     def add_pipeline(self,
                      name,
@@ -64,17 +68,19 @@ class Discohort(Cohort):
             ocaml_path=ocaml_path,
             name_cli_arg=name_cli_arg,
             other_cli_args=other_cli_args,
-            patient_subset_function=patient_subset_function)
+            patient_subset_function=patient_subset_function,
+            batch_size=self.batch_size,
+            batch_wait_secs=self.batch_wait_secs)
         self.pipelines[name] = pipeline
 
-    def run_pipeline(self, name):
+    def run_pipeline(self, name, dry_run=False):
         if name not in self.pipelines:
             raise ValueError(
                 "Trying to run a pipeline that does not exist: {}".format(
                     name))
 
         pipeline = self.pipelines[name]
-        pipeline.run(self)
+        pipeline.run(self, dry_run=dry_run)
 
     def move_results_dirs(self, updated_name):
         """

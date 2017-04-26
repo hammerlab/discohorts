@@ -17,17 +17,21 @@ from __future__ import print_function
 from types import FunctionType
 from subprocess import check_call
 from os import environ, path
+import time
 
 class Pipeline(object):
     def __init__(self, name, ocaml_path, name_cli_arg, other_cli_args,
-                 patient_subset_function):
+                 patient_subset_function, batch_size, batch_wait_secs):
         self.name = name
         self.ocaml_path = ocaml_path
         self.name_cli_arg = name_cli_arg
         self.other_cli_args = other_cli_args
         self.patient_subset_function = patient_subset_function
+        self.batch_size = batch_size
+        self.batch_wait_secs = batch_wait_secs
 
-    def run(self, discohort):
+    def run(self, discohort, dry_run):
+        ran_count = 0
         original_work_dir = environ["BIOKEPI_WORK_DIR"]
         original_install_tools_path = environ.get("INSTALL_TOOLS_PATH", None)
         original_pyensembl_cache_dir = environ.get("PYENSEMBL_CACHE_DIR", None)
@@ -78,7 +82,16 @@ class Pipeline(object):
                         cli_arg_value = cli_arg_value(patient)
                     command.append("--{}={}".format(cli_arg, cli_arg_value))
                 print("Running {}".format(" ".join(command)))
-                check_call(command)
+                if dry_run:
+                    print("(Not actually running)")
+                else:
+                    check_call(command)
+                ran_count += 1
+
+                if ran_count % self.batch_size == 0:
+                    print("Waiting for {} seconds after the last batch of {} ({} total submitted so far)".format(
+                        self.batch_wait_secs, self.batch_size, ran_count))
+                    time.sleep(self.batch_wait_secs)
         finally:
             environ["BIOKEPI_WORK_DIR"] = original_work_dir
             if original_install_tools_path:
