@@ -30,7 +30,7 @@ class Pipeline(object):
         self.batch_size = batch_size
         self.batch_wait_secs = batch_wait_secs
 
-    def run(self, discohort, dry_run):
+    def run(self, discohort, skip_num, wait_after_all, dry_run):
         ran_count = 0
         original_work_dir = environ["BIOKEPI_WORK_DIR"]
         original_install_tools_path = environ.get("INSTALL_TOOLS_PATH", None)
@@ -82,16 +82,24 @@ class Pipeline(object):
                         cli_arg_value = cli_arg_value(patient)
                     command.append("--{}={}".format(cli_arg, cli_arg_value))
                 print("Running {}".format(" ".join(command)))
-                if dry_run:
-                    print("(Not actually running)")
-                else:
-                    check_call(command)
                 ran_count += 1
+
+                if ran_count <= skip_num:
+                    print("(Actually skipping this one, number {})".format(ran_count))
+                else:
+                    if dry_run:
+                        print("(Not actually running)")
+                    else:
+                        check_call(command)
 
                 if ran_count % self.batch_size == 0:
                     print("Waiting for {} seconds after the last batch of {} ({} total submitted so far)".format(
                         self.batch_wait_secs, self.batch_size, ran_count))
                     time.sleep(self.batch_wait_secs)
+
+                if wait_after_all and ran_count == len(patient_subset):
+                    print("Waiting for {} seconds after the cohort ended ({} total submitted so far)".format(
+                        self.batch_wait_secs, ran_count))
         finally:
             environ["BIOKEPI_WORK_DIR"] = original_work_dir
             if original_install_tools_path:

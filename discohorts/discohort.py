@@ -73,14 +73,14 @@ class Discohort(Cohort):
             batch_wait_secs=self.batch_wait_secs)
         self.pipelines[name] = pipeline
 
-    def run_pipeline(self, name, dry_run=False):
+    def run_pipeline(self, name, skip_num=0, wait_after_all=False, dry_run=False):
         if name not in self.pipelines:
             raise ValueError(
                 "Trying to run a pipeline that does not exist: {}".format(
                     name))
 
         pipeline = self.pipelines[name]
-        pipeline.run(self, dry_run=dry_run)
+        pipeline.run(self, skip_num=skip_num, wait_after_all=wait_after_all, dry_run=dry_run)
 
     def move_results_dirs(self, updated_name):
         """
