@@ -21,12 +21,14 @@ import time
 
 class Pipeline(object):
     def __init__(self, name, ocaml_path, name_cli_arg, other_cli_args,
-                 patient_subset_function, batch_size, batch_wait_secs):
+                 patient_subset_function, work_dir_function,
+                 batch_size, batch_wait_secs):
         self.name = name
         self.ocaml_path = ocaml_path
         self.name_cli_arg = name_cli_arg
         self.other_cli_args = other_cli_args
         self.patient_subset_function = patient_subset_function
+        self.work_dir_function = work_dir_function
         self.batch_size = batch_size
         self.batch_wait_secs = batch_wait_secs
 
@@ -71,6 +73,8 @@ class Pipeline(object):
             print("Running on a patient subset of {} patients".format(
                 len(patient_subset)))
             for patient in patient_subset:
+                if self.work_dir_function is not None:
+                    self.work_dir_function(patient_to_work_dir[patient])
                 environ["BIOKEPI_WORK_DIR"] = patient_to_work_dir[patient]
                 print("Setting BIOKEPI_WORK_DIR={}".format(
                     environ["BIOKEPI_WORK_DIR"]))

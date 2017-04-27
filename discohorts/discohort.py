@@ -59,7 +59,8 @@ class Discohort(Cohort):
                      ocaml_path,
                      name_cli_arg="name",
                      other_cli_args={},
-                     patient_subset_function=None):
+                     patient_subset_function=None,
+                     work_dir_function=None):
         if name in self.pipelines:
             raise ValueError("Pipeline already exists: {}".format(name))
 
@@ -69,6 +70,7 @@ class Discohort(Cohort):
             name_cli_arg=name_cli_arg,
             other_cli_args=other_cli_args,
             patient_subset_function=patient_subset_function,
+            work_dir_function=work_dir_function,
             batch_size=self.batch_size,
             batch_wait_secs=self.batch_wait_secs)
         self.pipelines[name] = pipeline
