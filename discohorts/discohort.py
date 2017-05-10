@@ -84,64 +84,6 @@ class Discohort(Cohort):
         pipeline = self.pipelines[name]
         pipeline.run(self, skip_num=skip_num, wait_after_all=wait_after_all, dry_run=dry_run)
 
-    def move_results_dirs(self, updated_name):
-        """
-        Rename existing work directories to prevent collisions with future runs.
-        """
-        move_tuples = []
-        for results_dir in self.biokepi_results_dirs:
-            if not path.exists(results_dir):
-                print("{} does not exist, so there is nothing to move".format(
-                    results_dir))
-                continue
-
-            new_dir = path.join(path.dirname(results_dir), updated_name)
-            if path.exists(new_dir):
-                raise ValueError("{} already exists".format(new_dir))
-            move_tuples.append((results_dir, new_dir))
-
-        for old_dir, new_dir in move_tuples:
-            print("Moving {} to {}".format(old_dir, new_dir))
-            move(old_dir, new_dir)
-
-    def copy_data(self, only_cohort=True):
-        if self.dest_results_dir is None:
-            raise ValueError("No dest_results_dir provided")
-
-        if not (path.exists(self.dest_results_dir)):
-            raise ValueError("dest_results_dir does not exist: {}".format(
-                self.dest_results_dir))
-
-        for results_dir in self.biokepi_results_dirs:
-            patient_results_dirs = listdir(results_dir)
-            for patient_results_dir in patient_results_dirs:
-                old_path = path.join(results_dir, patient_results_dir)
-                found_patient_id = find_patient_id(self, patient_results_dir,
-                                                   self.id_delims)
-                # If this is a patient directory for this Cohort, *or*
-                # we don't care whether it's part of the Cohort or not,
-                # then copy to the destination directory.
-                if found_patient_id is not None or not only_cohort:
-                    new_path = path.join(self.dest_results_dir,
-                                         path.basename(patient_results_dir))
-                    while path.exists(new_path):
-                        updated_new_path = new_path + ".1"
-                        print("{} exists; copying to {}".format(
-                            new_path, updated_new_path))
-                        new_path = updated_new_path
-
-                    # Now only copy relevant files.
-                    for pattern in self.copy_only_patterns:
-                        patient_file_paths = find_files_recursive(
-                            search_path=old_path, pattern=pattern)
-                        for patient_file_path in patient_file_paths:
-                            patient_file_new_path = patient_file_path.replace(
-                                old_path, new_path)
-                            makedirs(patient_file_new_path)
-                            print("Copying {} to {}...".format(
-                                patient_file_path, patient_file_new_path))
-                            copy2(patient_file_path, patient_file_new_path)
-
     def populate(self, require_all_patients=True):
         # TODO: Incomplete method.
         patient_id_to_patient_results = defaultdict(list)
