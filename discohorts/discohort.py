@@ -38,11 +38,11 @@ class Discohort(Cohort):
                  batch_size=50,
                  batch_wait_secs=0):
         if len(biokepi_work_dirs) < 1:
-            raise ValueError("Need at least one work dir, but work_dirs = {}".
-                             format(biokepi_work_dirs))
+            raise ValueError(
+                "Need at least one work dir, but work_dirs = {}".format(biokepi_work_dirs))
 
-        self.__class__ = type(base_object.__class__.__name__,
-                              (self.__class__, base_object.__class__), {})
+        self.__class__ = type(base_object.__class__.__name__, (self.__class__,
+                                                               base_object.__class__), {})
         self.__dict__ = deepcopy(base_object.__dict__)
         self.pipelines = {}
         self.is_processed = False
@@ -54,10 +54,34 @@ class Discohort(Cohort):
         self.batch_size = batch_size
         self.batch_wait_secs = batch_wait_secs
 
+    def add_epidisco_pipeline(self,
+                              normal_inputs,
+                              rna_inputs,
+                              tumor_inputs,
+                              name="epidisco",
+                              ocaml_path="run_pipeline.ml",
+                              reference_build="b37decoy",
+                              other_cli_args={},
+                              patient_subset_function=None,
+                              work_dir_function=None):
+        initial_cli_args = {}
+        initial_cli_args["normal-inputs"] = normal_inputs
+        initial_cli_args["rna-inputs"] = rna_inputs
+        initial_cli_args["tumor-inputs"] = tumor_inputs
+        initial_cli_args["results-path"] = self.dest_results_dir
+        initial_cli_args["reference-build"] = "b37decoy"
+        initial_cli_args.update(other_cli_args)
+        return self.add_pipeline(
+            name=name,
+            ocaml_path=ocaml_path,
+            other_cli_args=initial_cli_args,
+            patient_subset_function=patient_subset_function,
+            work_dir_function=work_dir_function)
+
     def add_pipeline(self,
                      name,
                      ocaml_path,
-                     name_cli_arg="name",
+                     name_cli_arg=None,
                      other_cli_args={},
                      patient_subset_function=None,
                      work_dir_function=None):
@@ -77,9 +101,7 @@ class Discohort(Cohort):
 
     def run_pipeline(self, name, skip_num=0, wait_after_all=False, dry_run=False):
         if name not in self.pipelines:
-            raise ValueError(
-                "Trying to run a pipeline that does not exist: {}".format(
-                    name))
+            raise ValueError("Trying to run a pipeline that does not exist: {}".format(name))
 
         pipeline = self.pipelines[name]
         pipeline.run(self, skip_num=skip_num, wait_after_all=wait_after_all, dry_run=dry_run)
@@ -90,16 +112,13 @@ class Discohort(Cohort):
         for results_dir in self.biokepi_results_dirs:
             patient_results_dirs = listdir(results_dir)
             for patient_results_dir in patient_results_dirs:
-                found_patient_id = find_patient_id(self, patient_results_dir,
-                                                   self.id_delims)
+                found_patient_id = find_patient_id(self, patient_results_dir, self.id_delims)
                 if found_patient_id is not None:
                     patient_id_to_patient_results[found_patient_id].append(
                         path.join(results_dir, patient_results_dir))
-        if require_all_patients and (
-                len(patient_id_to_patient_results) != len(self)):
-            raise ValueError(
-                "Only found {} patients to populate the Cohort with, but expected {}".
-                format(len(patient_id_to_patient_results), len(self)))
+        if require_all_patients and (len(patient_id_to_patient_results) != len(self)):
+            raise ValueError("Only found {} patients to populate the Cohort with, but expected {}".
+                             format(len(patient_id_to_patient_results), len(self)))
 
         # TODO: Actually populate the cohort with more data.
         for patient in self:
@@ -110,18 +129,14 @@ class Discohort(Cohort):
 
     # TODO: Incomplete method.
     def populate_hla(self, patient, patient_results):
-        tsv_files = find_files_recursive(
-            search_path=patient_results, pattern="*.tsv")
+        tsv_files = find_files_recursive(search_path=patient_results, pattern="*.tsv")
         if len(tsv_files) > 1:
-            raise ValueError(
-                ("More than one TSV found for OptiType results in {}, "
-                 "but only one expected").format(patient_results))
+            raise ValueError(("More than one TSV found for OptiType results in {}, "
+                              "but only one expected").format(patient_results))
         if len(tsv_files) == 0:
-            raise ValueError(
-                "No OptiType TSV found in {}".format(patient_results))
+            raise ValueError("No OptiType TSV found in {}".format(patient_results))
 
         optitype_results_dir = path.dirname(tsv_files[0])
-        optitype_hlarp = subprocess.check_output(
-            ["hlarp", "optitype", optitype_results_dir])
+        optitype_hlarp = subprocess.check_output(["hlarp", "optitype", optitype_results_dir])
         print(optitype_hlarp)
         pass

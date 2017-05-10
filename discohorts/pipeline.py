@@ -79,12 +79,17 @@ class Pipeline(object):
                 print("Setting BIOKEPI_WORK_DIR={}".format(
                     environ["BIOKEPI_WORK_DIR"]))
                 command = ["ocaml", self.ocaml_path]
-                command.append("--{}={}".format(
-                    self.name_cli_arg, "{}_{}".format(self.name, patient.id)))
+                command_name = "{}_{}".format(self.name, patient.id)
+                if self.name_cli_arg is not None:
+                    command.append("--{}={}".format(
+                        self.name_cli_arg, command_name))
                 for cli_arg, cli_arg_value in self.other_cli_args.items():
                     if type(cli_arg_value) == FunctionType:
                         cli_arg_value = cli_arg_value(patient)
                     command.append("--{}={}".format(cli_arg, cli_arg_value))
+                # No name CLI arg? Append the name to the end of the command
+                if self.name_cli_arg is None:
+                    command.append(command_name)
                 print("Running {}".format(" ".join(command)))
                 ran_count += 1
 
