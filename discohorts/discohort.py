@@ -63,7 +63,7 @@ class Discohort(Cohort):
 
     def add_pipeline(self, pipeline_name, config, ocaml_path):
         if pipeline_name in self.pipelines:
-            raise ValueError("Pipeline already exists: {}".format(name))
+            raise ValueError("Pipeline already exists: {}".format(pipeline_name))
 
         pipeline = Pipeline(
             config=config,
@@ -74,7 +74,7 @@ class Discohort(Cohort):
 
     def run_pipeline(self, pipeline_name, skip_num=0, wait_after_all=False, dry_run=False):
         if pipeline_name not in self.pipelines:
-            raise ValueError("Trying to run a pipeline that does not exist: {}".format(name))
+            raise ValueError("Trying to run a pipeline that does not exist: {}".format(pipeline_name))
 
         pipeline = self.pipelines[pipeline_name]
         pipeline.run(self, skip_num=skip_num, wait_after_all=wait_after_all, dry_run=dry_run)
