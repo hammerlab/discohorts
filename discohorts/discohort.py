@@ -23,6 +23,7 @@ from cohorts import Cohort
 
 from .pipeline import Pipeline
 from .utils import find_files_recursive, find_patient_id
+from .config import EpidiscoConfig
 
 DEFAULT_ID_DELIMS = ["_", "-"]
 
@@ -52,7 +53,11 @@ class Discohort(Cohort):
         self.batch_size = batch_size
         self.batch_wait_secs = batch_wait_secs
 
-    def add_epidisco_pipeline(self, run_name, pipeline_name, config, ocaml_path="run_pipeline.ml"):
+    def add_epidisco_pipeline(self, pipeline_name, config=None, run_name=None, ocaml_path="run_pipeline.ml"):
+        if config is None:
+            config = EpidiscoConfig(self)
+        if run_name is None:
+            run_name = lambda patient: "{}_{}".format(pipeline_name, patient.id)
         config.update("anonymous_args", [run_name])
         return self.add_pipeline(pipeline_name=pipeline_name, config=config, ocaml_path=ocaml_path)
 
