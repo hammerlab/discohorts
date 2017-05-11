@@ -82,10 +82,10 @@ class EpidiscoConfig(Config):
         return True
 
     def arg_with_optitype_rna(self, patient):
-        return self.arg_rna_input(patient)
+        return self.arg_rna_input(patient) is not None
 
     def arg_with_seq2hla(self, patient):
-        return self.arg_rna_input(patient)
+        return self.arg_rna_input(patient) is not None
 
     def arg_with_kallisto(self, patient):
-        return self.arg_rna_input(patient)
+        return self.arg_rna_input(patient) is not None
