@@ -34,7 +34,6 @@ class Discohort(Cohort):
                  biokepi_results_dirs,
                  dest_results_dir=None,
                  id_delims=DEFAULT_ID_DELIMS,
-                 copy_only_patterns=["*.tsv"],
                  batch_size=50,
                  batch_wait_secs=0):
         if len(biokepi_work_dirs) < 1:
@@ -50,60 +49,29 @@ class Discohort(Cohort):
         self.biokepi_results_dirs = biokepi_results_dirs
         self.dest_results_dir = dest_results_dir
         self.id_delims = id_delims
-        self.copy_only_patterns = copy_only_patterns
         self.batch_size = batch_size
         self.batch_wait_secs = batch_wait_secs
 
-    def add_epidisco_pipeline(self,
-                              normal_inputs,
-                              rna_inputs,
-                              tumor_inputs,
-                              name="epidisco",
-                              ocaml_path="run_pipeline.ml",
-                              reference_build="b37decoy",
-                              other_cli_args={},
-                              patient_subset_function=None,
-                              work_dir_function=None):
-        initial_cli_args = {}
-        initial_cli_args["normal-inputs"] = normal_inputs
-        initial_cli_args["rna-inputs"] = rna_inputs
-        initial_cli_args["tumor-inputs"] = tumor_inputs
-        initial_cli_args["results-path"] = self.dest_results_dir
-        initial_cli_args["reference-build"] = "b37decoy"
-        initial_cli_args.update(other_cli_args)
-        return self.add_pipeline(
-            name=name,
-            ocaml_path=ocaml_path,
-            other_cli_args=initial_cli_args,
-            patient_subset_function=patient_subset_function,
-            work_dir_function=work_dir_function)
+    def add_epidisco_pipeline(self, run_name, pipeline_name, config, ocaml_path="run_pipeline.ml"):
+        config.update("anonymous_args", [run_name])
+        return self.add_pipeline(pipeline_name=pipeline_name, config=config, ocaml_path=ocaml_path)
 
-    def add_pipeline(self,
-                     name,
-                     ocaml_path,
-                     name_cli_arg=None,
-                     other_cli_args={},
-                     patient_subset_function=None,
-                     work_dir_function=None):
-        if name in self.pipelines:
+    def add_pipeline(self, pipeline_name, config, ocaml_path):
+        if pipeline_name in self.pipelines:
             raise ValueError("Pipeline already exists: {}".format(name))
 
         pipeline = Pipeline(
-            name=name,
+            config=config,
             ocaml_path=ocaml_path,
-            name_cli_arg=name_cli_arg,
-            other_cli_args=other_cli_args,
-            patient_subset_function=patient_subset_function,
-            work_dir_function=work_dir_function,
             batch_size=self.batch_size,
             batch_wait_secs=self.batch_wait_secs)
-        self.pipelines[name] = pipeline
+        self.pipelines[pipeline_name] = pipeline
 
-    def run_pipeline(self, name, skip_num=0, wait_after_all=False, dry_run=False):
-        if name not in self.pipelines:
+    def run_pipeline(self, pipeline_name, skip_num=0, wait_after_all=False, dry_run=False):
+        if pipeline_name not in self.pipelines:
             raise ValueError("Trying to run a pipeline that does not exist: {}".format(name))
 
-        pipeline = self.pipelines[name]
+        pipeline = self.pipelines[pipeline_name]
         pipeline.run(self, skip_num=skip_num, wait_after_all=wait_after_all, dry_run=dry_run)
 
     def populate(self, require_all_patients=True):
