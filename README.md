@@ -22,14 +22,14 @@ cohort.add_epidisco_pipeline(
 cohort.add_epidisco_pipeline(
     pipeline_name="epidisco_2",
     config=EpidiscoConfig(cohort,
-                          arg_normal_input=lambda patient: patient.tumor_sample.bam_path_dna))
+                          arg_normal_input=lambda patient: patient.normal_sample.bam_path_dna))
 
 # Customize the normal BAM input and the run name.
 cohort.add_epidisco_pipeline(
     pipeline_name="epidisco_3",
     run_name=lambda patient: "epidisco_{}".format(patient.id),
     config=EpidiscoConfig(cohort,
-                          arg_normal_input=lambda patient: patient.tumor_sample.bam_path_dna))
+                          arg_normal_input=lambda patient: patient.normal_sample.bam_path_dna))
 
 # Customize the normal BAM input, the run name, and which patients to run on.
 cohort.add_epidisco_pipeline(
@@ -37,7 +37,7 @@ cohort.add_epidisco_pipeline(
     run_name=lambda patient: "epidisco_{}".format(patient.id),
     config=EpidiscoConfig(cohort,
                           keep=lambda patient: patient.id == "468",
-                          arg_normal_input=lambda patient: patient.tumor_sample.bam_path_dna))
+                          arg_normal_input=lambda patient: patient.normal_sample.bam_path_dna))
 
 # Same as #4, but written differently.
 class EpidiscoConfigModified(EpidiscoConfig):
@@ -49,6 +49,12 @@ modified_config = EpidiscoConfigModified(cohort)
 cohort.add_epidisco_pipeline(
     pipeline_name="epidisco_5",
     config=modified_config)
+    
+# Customize any CLI argument; for example, picard_java_max_heap_size.
+cohort.add_epidisco_pipeline(
+    pipeline_name="epidisco_6",
+    config=EpidiscoConfig(cohort,
+                          arg_picard_java_max_heap_size="20g"))
 
 # This is Discohort's own dry run functionality, FYI. Should have a better name.
 cohort.run_pipeline("epidisco_1", dry_run=True)
