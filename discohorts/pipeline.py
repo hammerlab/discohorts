@@ -14,21 +14,16 @@
 
 from __future__ import print_function
 
-from types import FunctionType
 from subprocess import check_call
 from os import environ, path
 import time
+from types import FunctionType
+
 
 class Pipeline(object):
-    def __init__(self, name, ocaml_path, name_cli_arg, other_cli_args,
-                 patient_subset_function, work_dir_function,
-                 batch_size, batch_wait_secs):
-        self.name = name
-        self.ocaml_path = ocaml_path
-        self.name_cli_arg = name_cli_arg
-        self.other_cli_args = other_cli_args
-        self.patient_subset_function = patient_subset_function
-        self.work_dir_function = work_dir_function
+    def __init__(self, pipeline_path, config, batch_size, batch_wait_secs):
+        self.config = config
+        self.pipeline_path = pipeline_path
         self.batch_size = batch_size
         self.batch_wait_secs = batch_wait_secs
 
@@ -38,28 +33,18 @@ class Pipeline(object):
         original_install_tools_path = environ.get("INSTALL_TOOLS_PATH", None)
         original_pyensembl_cache_dir = environ.get("PYENSEMBL_CACHE_DIR", None)
         try:
-            environ["INSTALL_TOOLS_PATH"] = path.join(original_work_dir,
-                                                      "toolkit")
-            print("Setting INSTALL_TOOLS_PATH={}".format(
-                environ["INSTALL_TOOLS_PATH"]))
-            environ["PYENSEMBL_CACHE_DIR"] = path.join(original_work_dir,
-                                                       "pyensembl-cache")
-            print("Setting PYENSEMBL_CACHE_DIR={}".format(
-                environ["PYENSEMBL_CACHE_DIR"]))
-            environ["REFERENCE_GENOME_PATH"] = path.join(original_work_dir,
-                                                         "reference-genome")
-            print("Setting REFERENCE_GENOME_PATH={}".format(
-                environ["REFERENCE_GENOME_PATH"]))
+            environ["INSTALL_TOOLS_PATH"] = path.join(original_work_dir, "toolkit")
+            print("Setting INSTALL_TOOLS_PATH={}".format(environ["INSTALL_TOOLS_PATH"]))
+            environ["PYENSEMBL_CACHE_DIR"] = path.join(original_work_dir, "pyensembl-cache")
+            print("Setting PYENSEMBL_CACHE_DIR={}".format(environ["PYENSEMBL_CACHE_DIR"]))
+            environ["REFERENCE_GENOME_PATH"] = path.join(original_work_dir, "reference-genome")
+            print("Setting REFERENCE_GENOME_PATH={}".format(environ["REFERENCE_GENOME_PATH"]))
             work_dir_index = 0
 
-            if self.patient_subset_function is None:
-                patient_subset = discohort
-            else:
-                patient_subset = [
-                    patient for patient in discohort
-                    if self.patient_subset_function(patient)
-                ]
+            # Run on only the correct subset of patients.
+            patient_subset = [patient for patient in discohort if self.config.keep(patient)]
 
+            # Map from patient to the appropriate work dir.
             def get_patient_to_work_dir(patients, work_dirs):
                 num_chunks = len(work_dirs)
                 return_dict = {}
@@ -68,23 +53,43 @@ class Pipeline(object):
                         return_dict[item] = work_dir
                 return return_dict
 
-            patient_to_work_dir = get_patient_to_work_dir(
-                patient_subset, discohort.biokepi_work_dirs)
-            print("Running on a patient subset of {} patients".format(
-                len(patient_subset)))
+            patient_to_work_dir = get_patient_to_work_dir(patient_subset,
+                                                          discohort.biokepi_work_dirs)
+
+            # Loop over all relevant patients.
+            print("Running on a patient subset of {} patients".format(len(patient_subset)))
             for patient in patient_subset:
-                if self.work_dir_function is not None:
-                    self.work_dir_function(patient_to_work_dir[patient])
+                # Grab the work_dir and run an optional function that takes in work_dir as input.
+                # Also set the BIOKEPI_WORK_DIR environment variable.
+                work_dir = patient_to_work_dir[patient]
+                self.config.given_work_dir(patient, work_dir)
                 environ["BIOKEPI_WORK_DIR"] = patient_to_work_dir[patient]
-                print("Setting BIOKEPI_WORK_DIR={}".format(
-                    environ["BIOKEPI_WORK_DIR"]))
-                command = ["ocaml", self.ocaml_path]
-                command.append("--{}={}".format(
-                    self.name_cli_arg, "{}_{}".format(self.name, patient.id)))
-                for cli_arg, cli_arg_value in self.other_cli_args.items():
-                    if type(cli_arg_value) == FunctionType:
-                        cli_arg_value = cli_arg_value(patient)
-                    command.append("--{}={}".format(cli_arg, cli_arg_value))
+                print("Setting BIOKEPI_WORK_DIR={}".format(environ["BIOKEPI_WORK_DIR"]))
+
+                # Build up our command.
+                command = ["ocaml", self.pipeline_path]
+
+                # If an argument has a None value, skip it.
+                # If an argument has a boolean value, include it as --arg if True.
+                # If an argument has a non-boolean value, include it as --arg=<value>.
+                for attr in dir(self.config):
+                    if attr.startswith("arg_"):
+                        value = getattr(self.config, attr)
+                        value = value(patient) # Always will be f(patient)
+                        if value is not None:
+                            arg_name = attr.split("arg_")[1]
+                            arg_name = arg_name.replace("_", "-")
+                            if value == True:
+                                command.append("--{}".format(arg_name))
+                            elif type(value) != bool:
+                                command.append("--{}={}".format(arg_name, value))
+
+                # Anonymous args (non-keyword args) have no key/value.
+                for anon_arg in self.config.anonymous_args(patient):
+                    if type(anon_arg) == FunctionType:
+                        anon_arg = anon_arg(patient)
+                    command.append(anon_arg)
+
                 print("Running {}".format(" ".join(command)))
                 ran_count += 1
 
@@ -97,13 +102,15 @@ class Pipeline(object):
                         check_call(command)
 
                 if ran_count % self.batch_size == 0:
-                    print("Waiting for {} seconds after the last batch of {} ({} total submitted so far)".format(
-                        self.batch_wait_secs, self.batch_size, ran_count))
+                    print(
+                        "Waiting for {} seconds after the last batch of {} ({} total submitted so far)".
+                        format(self.batch_wait_secs, self.batch_size, ran_count))
                     time.sleep(self.batch_wait_secs)
 
                 if wait_after_all and ran_count == len(patient_subset):
-                    print("Waiting for {} seconds after the cohort ended ({} total submitted so far)".format(
-                        self.batch_wait_secs, ran_count))
+                    print(
+                        "Waiting for {} seconds after the cohort ended ({} total submitted so far)".
+                        format(self.batch_wait_secs, ran_count))
         finally:
             environ["BIOKEPI_WORK_DIR"] = original_work_dir
             if original_install_tools_path:
