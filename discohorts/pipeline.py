@@ -21,9 +21,9 @@ from types import FunctionType
 
 
 class Pipeline(object):
-    def __init__(self, ocaml_path, config, batch_size, batch_wait_secs):
+    def __init__(self, pipeline_path, config, batch_size, batch_wait_secs):
         self.config = config
-        self.ocaml_path = ocaml_path
+        self.pipeline_path = pipeline_path
         self.batch_size = batch_size
         self.batch_wait_secs = batch_wait_secs
 
@@ -67,7 +67,7 @@ class Pipeline(object):
                 print("Setting BIOKEPI_WORK_DIR={}".format(environ["BIOKEPI_WORK_DIR"]))
 
                 # Build up our command.
-                command = ["ocaml", self.ocaml_path]
+                command = ["ocaml", self.pipeline_path]
 
                 # If an argument has a None value, skip it.
                 # If an argument has a boolean value, include it as --arg if True.

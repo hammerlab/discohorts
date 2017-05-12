@@ -53,21 +53,21 @@ class Discohort(Cohort):
         self.batch_size = batch_size
         self.batch_wait_secs = batch_wait_secs
 
-    def add_epidisco_pipeline(self, pipeline_name, config=None, run_name=None, ocaml_path="run_pipeline.ml"):
+    def add_epidisco_pipeline(self, pipeline_name, config=None, run_name=None, pipeline_path="run_pipeline.ml"):
         if config is None:
             config = EpidiscoConfig(self)
         if run_name is None:
             run_name = lambda patient: "{}_{}".format(pipeline_name, patient.id)
         config.update("anonymous_args", [run_name])
-        return self.add_pipeline(pipeline_name=pipeline_name, config=config, ocaml_path=ocaml_path)
+        return self.add_pipeline(pipeline_name=pipeline_name, config=config, pipeline_path=pipeline_path)
 
-    def add_pipeline(self, pipeline_name, config, ocaml_path):
+    def add_pipeline(self, pipeline_name, config, pipeline_path):
         if pipeline_name in self.pipelines:
             raise ValueError("Pipeline already exists: {}".format(pipeline_name))
 
         pipeline = Pipeline(
             config=config,
-            ocaml_path=ocaml_path,
+            pipeline_path=pipeline_path,
             batch_size=self.batch_size,
             batch_wait_secs=self.batch_wait_secs)
         self.pipelines[pipeline_name] = pipeline
