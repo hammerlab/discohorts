@@ -54,7 +54,10 @@ class Config(object):
         return None
 
     def arg_results_path(self, patient):
-        return self.discohort.dest_results_dir
+        # If we have a single result directory, use that.
+        if len(self.discohort.biokepi_results_dirs) == 1:
+            return self.discohort.biokepi_results_dirs[0]
+        return None
 
     def arg_reference_build(self, patient):
         return "b37"
