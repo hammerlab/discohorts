@@ -17,7 +17,7 @@ from types import FunctionType
 
 
 class Config(object):
-    def __init__(self, discohort, **kwargs):
+    def __init__(self, discohort=None, **kwargs):
         """
         Override (or create from scratch) any method with either a f(patient)
         function or a value.
@@ -25,6 +25,8 @@ class Config(object):
         Any overriding value will be converted into a f(patient) function.
 
         Any argument to the CLI needs to be prefixed with "arg_".
+
+        If Discohort is None, the user is expected to provide it later.
         """
         self.discohort = discohort
         for key, value in kwargs.items():
@@ -54,6 +56,9 @@ class Config(object):
         return None
 
     def arg_results_path(self, patient):
+        if self.discohort is None:
+            raise ValueError("Config requires a self.discohort value.")
+
         # If we have a single result directory, use that.
         if len(self.discohort.biokepi_results_dirs) == 1:
             return self.discohort.biokepi_results_dirs[0]
