@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from copy import deepcopy
+from copy import copy
 from os import path, listdir, makedirs
 from shutil import copy2, move
 from collections import defaultdict
@@ -44,7 +44,8 @@ class Discohort(Cohort):
 
         self.__class__ = type(base_object.__class__.__name__, (self.__class__,
                                                                base_object.__class__), {})
-        self.__dict__ = deepcopy(base_object.__dict__)
+        self.__dict__ = copy(base_object.__dict__)
+
         self.pipelines = {}
         self.is_processed = False
         self.biokepi_work_dirs = biokepi_work_dirs
@@ -69,6 +70,9 @@ class Discohort(Cohort):
     def add_pipeline(self, pipeline_name, config, pipeline_path):
         if pipeline_name in self.pipelines:
             raise ValueError("Pipeline already exists: {}".format(pipeline_name))
+
+        if config.discohort is None:
+            config.discohort = self
 
         pipeline = Pipeline(
             config=config,
