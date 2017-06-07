@@ -29,16 +29,20 @@ class Pipeline(object):
 
     def run(self, discohort, skip_num, wait_after_all, dry_run):
         ran_count = 0
-        original_work_dir = environ["BIOKEPI_WORK_DIR"]
-        original_install_tools_path = environ.get("INSTALL_TOOLS_PATH", None)
-        original_pyensembl_cache_dir = environ.get("PYENSEMBL_CACHE_DIR", None)
+        original_envs = dict()
+        for var in ("BIOKEPI_WORK_DIR", "INSTALL_TOOLS_PATH", "PYENSEMBL_CACHE_DIR"):
+            if var in environ:
+                original_envs[var] = environ[var]
+            else:
+                original_envs[var] = None
         try:
-            environ["INSTALL_TOOLS_PATH"] = path.join(original_work_dir, "toolkit")
-            print("Setting INSTALL_TOOLS_PATH={}".format(environ["INSTALL_TOOLS_PATH"]))
-            environ["PYENSEMBL_CACHE_DIR"] = path.join(original_work_dir, "pyensembl-cache")
-            print("Setting PYENSEMBL_CACHE_DIR={}".format(environ["PYENSEMBL_CACHE_DIR"]))
-            environ["REFERENCE_GENOME_PATH"] = path.join(original_work_dir, "reference-genome")
-            print("Setting REFERENCE_GENOME_PATH={}".format(environ["REFERENCE_GENOME_PATH"]))
+            if original_envs["BIOKEPI_WORK_DIR"] is not None:
+                environ["INSTALL_TOOLS_PATH"] = path.join(original_envs["BIOKEPI_WORK_DIR"], "toolkit")
+                print("Setting INSTALL_TOOLS_PATH={}".format(environ["INSTALL_TOOLS_PATH"]))
+                environ["PYENSEMBL_CACHE_DIR"] = path.join(original_envs["BIOKEPI_WORK_DIR"], "pyensembl-cache")
+                print("Setting PYENSEMBL_CACHE_DIR={}".format(environ["PYENSEMBL_CACHE_DIR"]))
+                environ["REFERENCE_GENOME_PATH"] = path.join(original_envs["BIOKEPI_WORK_DIR"], "reference-genome")
+                print("Setting REFERENCE_GENOME_PATH={}".format(environ["REFERENCE_GENOME_PATH"]))
             work_dir_index = 0
 
             # Run on only the correct subset of patients.
@@ -112,12 +116,10 @@ class Pipeline(object):
                         "Waiting for {} seconds after the cohort ended ({} total submitted so far)".
                         format(self.batch_wait_secs, ran_count))
         finally:
-            environ["BIOKEPI_WORK_DIR"] = original_work_dir
-            if original_install_tools_path:
-                environ["INSTALL_TOOLS_PATH"] = original_install_tools_path
-            else:
-                del environ["INSTALL_TOOLS_PATH"]
-            if original_pyensembl_cache_dir:
-                environ["PYENSEMBL_CACHE_DIR"] = original_pyensembl_cache_dir
-            else:
-                del environ["PYENSEMBL_CACHE_DIR"]
+            for var in original_envs:
+                if original_envs[var] is None:
+                    if var in environ:
+                        del environ[var]
+                else:
+                    environ[var] = original_envs[var]
+
