@@ -30,9 +30,9 @@ DEFAULT_ID_DELIMS = ["_", "-"]
 logger = get_logger(__name__)
 
 
-class Discohort(Cohort):
+class Discohort(object):
     def __init__(self,
-                 base_object,
+                 cohort,
                  biokepi_work_dirs,
                  biokepi_results_dirs=[],
                  id_delims=DEFAULT_ID_DELIMS,
@@ -42,10 +42,7 @@ class Discohort(Cohort):
             raise ValueError(
                 "Need at least one work dir, but work_dirs = {}".format(biokepi_work_dirs))
 
-        self.__class__ = type(base_object.__class__.__name__, (self.__class__,
-                                                               base_object.__class__), {})
-        self.__dict__ = copy(base_object.__dict__)
-
+        self.cohort = cohort
         self.pipelines = {}
         self.is_processed = False
         self.biokepi_work_dirs = biokepi_work_dirs
@@ -89,7 +86,7 @@ class Discohort(Cohort):
         pipeline = self.pipelines[pipeline_name]
         pipeline.run(self, skip_num=skip_num, wait_after_all=wait_after_all, dry_run=dry_run)
 
-    def populate(self, must_contain, only_complete=True):
+    def populate(self, must_contain, only_complete=True, cohort=None):
         """
         must_contain determines what we're populating: RNA, DNA, etc.
         e.g. must_contain="dna" looks for "dna" in the root directory.
@@ -100,6 +97,9 @@ class Discohort(Cohort):
         If only_complete is True, raise an error if we don't populate every Patient
         in the Cohort.
         """
+        if cohort is None:
+            cohort = self.cohort
+
         # We may have different results directories on different NFS servers, for example.
         # e.g. ['/nfs-pool-2/biokepi/results', '/nfs-pool-3/biokepi/results']
         patient_to_path = {}
@@ -125,17 +125,17 @@ class Discohort(Cohort):
                         patient_to_path[found_patient] = patient_path
 
         # Here we list out different components to populate.
-        self.populate_fn(fn=populate_optitype, patient_to_path=patient_to_path, only_complete=True)
+        self.populate_fn(fn=populate_optitype, patient_to_path=patient_to_path, only_complete=only_complete, cohort=cohort)
 
-    def populate_fn(self, fn, patient_to_path, only_complete):
+    def populate_fn(self, fn, patient_to_path, only_complete, cohort):
         """
         For a given fn (e.g. populate_optitype) and patient paths (patient_to_path), update the
-        patients (e.g. with patient.hla_alleles).
+        patients (e.g. with patient.hla_alleles) in the cohort.
 
         If only_complete is True, only update the patients if they will *all* be updated.
         """
         patient_modifiers = []
-        for patient in self:
+        for patient in cohort:
             if patient not in patient_to_path:
                 continue
 

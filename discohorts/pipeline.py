@@ -42,7 +42,7 @@ class Pipeline(object):
             work_dir_index = 0
 
             # Run on only the correct subset of patients.
-            patient_subset = [patient for patient in discohort if self.config.keep(patient)]
+            patient_subset = [patient for patient in discohort.cohort if self.config.keep(patient)]
 
             # Map from patient to the appropriate work dir.
             def get_patient_to_work_dir(patients, work_dirs):
