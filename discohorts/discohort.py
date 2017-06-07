@@ -112,7 +112,7 @@ class Discohort(object):
                     continue
 
                 # Look for a patient ID in the directory name.
-                found_patient = find_patient(self, patient_dir, self.id_delims)
+                found_patient = find_patient(self.cohort, patient_dir, self.id_delims)
                 if found_patient is not None:
                     # Make sure we don't have multiple dirs per patient, either across or within the
                     # root results directories, or e.g. RNA vs. DNA.
@@ -146,7 +146,7 @@ class Discohort(object):
             if patient_modifier is not None:
                 patient_modifiers.append(patient_modifier)
 
-        if only_complete and len(patient_modifiers) < len(self):
+        if only_complete and len(patient_modifiers) < len(cohort):
             raise ValueError(
                 "Must populate entire Cohort ({} patients), but valid data was only found for {} patients"
             )
