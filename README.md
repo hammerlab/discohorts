@@ -9,11 +9,11 @@ from discohorts import Discohort
 
 cohort = load_cohort(min_tumor_mtc=0, min_normal_mtc=0)
 work_dirs = ["/nfs-pool-{}/biokepi/".format(i) for i in range(2, 17)]
-dest_results_dir = "/nfs-pool/biokepi/results"
+dest_results_dirs = ["/nfs-pool/biokepi/results"]
 cohort = Discohort(
     cohort,
     biokepi_work_dirs=work_dirs,
-    dest_results_dir=dest_results_dir)
+    biokepi_results_dirs=dest_results_dirs)
 
 cohort.add_epidisco_pipeline(
     pipeline_name="epidisco_1")
